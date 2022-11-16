@@ -1,0 +1,716 @@
+---
+title: "MainScript"
+author: "ValparaiBirds_2000-19"
+date: "15/11/2022"
+output: pdf_document
+---
+
+```{r setup, include=TRUE, message=FALSE,warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE,root.dir = getwd())
+```
+
+# .
+
+# DATA ANALYSIS
+
+# .
+
+## Reading all the input files for the models
+
+```{r init, message=FALSE,warning=FALSE}
+
+library(tidyverse)
+library(sjPlot)
+library(lme4)
+library(lmerTest)
+library(TITAN2)
+library(factoextra)
+library(ggeffects)
+library(ggbreak)
+library(aplot)
+
+dat_richness <- read_csv(file = "inputfiles_main/Yrichness_Xall4guild_fin.csv") %>% 
+  mutate(area = log10(Area_m2/10000)) %>% filter(!is.na(rareInd))
+dat_density <- read_csv(file = "inputfiles_main/YdensityDetProb_Xall4guild_fin.csv") %>% 
+  mutate(area = log10(Area_m2/10000)) %>% filter(!is.na(Estimate))
+dat_composition <- read_csv(file = "inputfiles_main/Ycomposition_Xall4guild_fin.csv") %>% 
+  mutate(area = log10(Area_m2/10000)) %>% filter(!is.na(bcdist))
+dat_densityER <-read_csv(file = "inputfiles_main/YdensityER_Xall4guild_fin.csv") %>% 
+  mutate(area = log10(Area_m2/10000)) # not using this dataset 
+
+colslabel <- rev(c("black","forestgreen","deepskyblue","goldenrod"))
+# standard colours for All, RF, RR, OC
+
+pred <- read_csv(file = "inputfiles_main/Xallpredictors_fin.csv") %>% mutate(area = log10(Area_m2))
+
+vegdat <- read_csv(file = "inputfiles_main/vegetationdata.csv") 
+
+```
+
+### Figure 1b: PCA bi-plot
+
+```{r}
+
+# Predictors: Area / Shape / Vegetation (PC1, PC2, PC3- mean and for 3 yrs) #####
+
+fragcode <-
+  data.frame(
+    Fragment =c("Akkamalai_Iyerpadi","Andiparai","Candura","Injiparai","Iyerpadi-Top","Karian-Shola","Korangamudi","Manamboly","Murugaali-BlackBridge", "Murugaali-Sholayar","OldValparai","Pannimade","Puduthottam","Sankarankudi","Selaliparai1","Selaliparai2","Varagaliar","Varatuparai123","Varatuparai4"),
+    Fcode = c('AK','AN','CA','IJ','IT','KS','KO','MA','BB','MS','OV','PA','PU','SK','S1','S2','VA','V123','V4'))
+
+vvar <-
+  read_csv("inputfiles_main/vegetationdata.csv") %>%
+  rename(Season = Year,
+         Fragment = Location) %>%
+  mutate(leaflitter_m = ifelse(Fragment=="Candura",2,leaflitter_m),
+         specrich_minstem = ifelse(Fragment=="Selaliparai2",16,specrich_minstem)) %>%
+  mutate(Season = case_when(
+    Fragment== "Injiparai" & Season==2002 ~ 2000,
+    Fragment== "Sankarankudi" & Season==2002 ~ 2000,
+    Fragment== "Candura" & Season==2018 ~ 2019,
+    TRUE ~ Season)) %>%
+
+  left_join(x = .,y = fragcode) %>%
+
+  dplyr::select(Season,Fragment,treedensity_ha,treebasal_m2perha,
+              specrich_minstem,leaflitter_m,canopyc_m,vstrata_m,shrub_m) %>% 
+  filter(Fragment %in% unique(dat_richness$Fragment))
+
+for(i in 1:nrow(vvar))
+{
+  for(j in 1:nrow(vvar))
+  {
+    if(vvar$Season[i]==2000 & vvar$Season[j]==2005 & vvar$Fragment[i]==vvar$Fragment[j])
+    {
+        vvar$specrich_minstem[j] <- vvar$specrich_minstem[i]
+        vvar$leaflitter_m[j] <- vvar$leaflitter_m[i]
+    }
+  }
+}
+
+# manually adding LL depth to Candura - same as M-sholayar
+# manually adding species richness to Selaliparai2, it was just one number shared by TRSR
+
+vvar_fin <- vvar %>%
+           rename(tree.density = treedensity_ha, tree.basalarea = treebasal_m2perha,
+                  canopy.cover = canopyc_m, vertical.stratification = vstrata_m,
+                  shrub.density = shrub_m,
+                  species.richness = specrich_minstem,
+                  litter.depth = leaflitter_m) %>%
+           left_join(x = ., y = fragcode) %>%
+           mutate(FragSeason= ifelse(test = substr(Season,3,4)=="00",
+                                     yes = paste0(Fcode,'a'),
+                                     ifelse(substr(Season,3,4)=="05",
+                                            paste0(Fcode,'b'),
+                                            paste0(Fcode,'c')))) %>%
+           dplyr::select(-Fragment,-Season,-Fcode) %>% column_to_rownames("FragSeason")
+
+pca <-
+  prcomp(x = vvar_fin %>% as.matrix(),
+         center = TRUE,
+         scale = TRUE)
+
+tmp <- rownames(pca$x)
+tmp2 <- paste0(substr(x = tmp,start = 1,stop = nchar(tmp)-1),
+               paste0('[',substr(x = tmp,start = nchar(tmp),stop = nchar(tmp)),']'))
+tmp3 <- paste0('expression(',substr(x = tmp,start = 1,stop = nchar(tmp)-1),'[\"',
+               substr(x = tmp,start = nchar(tmp),stop = nchar(tmp)),'\"])') %>% noquote()
+
+rownames(pca$x) <- tmp2
+
+save(pca,file = "results/intermediate_objects/PCAobj.Rdata")
+
+pcaplot_2axes <-
+  fviz_pca_biplot(pca, axes = c(1,2),repel = T,col.ind = "grey50",col.var = "forestgreen") + 
+  theme_bw() + ggtitle("First 2 principal components obtained by collapsing seven habitat variables") + theme(plot.title = element_text(hjust = 0.5))
+
+
+ggsave(filename = "results/figures/Figure1b_PCAhabitat.png",plot = pcaplot_2axes,
+       device =  "png",width = 7,height = 7,dpi = 300,units = "in")
+
+
+```
+
+
+### Models
+
+richness, density, composition \~ fragment characteristics + habitat + time + (1\|Fragment)
+
+```{r models}
+dat_richness <- dat_richness %>% mutate(area = log10(area_ha))
+
+md3.richness.all <- lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="all"),
+                         formula = rareInd ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season) + (1|Fragment))
+md3.richness.rf <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="rf"),
+                         formula = rareInd ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + (1|Fragment))
+md3.richness.rr <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="rr"),
+                         formula = rareInd ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + (1|Fragment))
+md3.richness.oc <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="oc"),
+                         formula = rareInd ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + (1|Fragment))
+
+dat_density <- dat_density %>% mutate(area = log10(area_ha))
+
+md3.density.all <- lmerTest::lmer(data = dat_density %>% filter(dat_subset=="all"),
+                         formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season) + (1|Fragment))
+md3.density.rf <-  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="rf"),
+                         formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season) + (1|Fragment))
+md3.density.rr <-  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="rr"),
+                         formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season) + (1|Fragment))
+# md3.density.oc <-  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="oc"),
+#                          formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + # scale(PC3) + scale(Season) + (1|Fragment))
+md3.density.oc <- lm(data = dat_density %>% filter(dat_subset=="oc"),
+                     formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season))
+# mixed model did not converge, the most parsimonious option was a linear model with the same set of predictors;
+# using leave-one-out regression we verified that this procedure did not modify the direction or significance of each predictor
+
+dat_composition <- dat_composition %>% mutate(area = log10(area_ha))
+
+md3.composition.all <- lmerTest::lmer(data = dat_composition %>% filter(dat_subset=="all"),
+                         formula = bcdist ~ scale(area) + scale(dPC1) + scale(dPC2) + scale(dPC3) + scale(timediff) + (1|Fragment))
+md3.composition.rf <-  lmerTest::lmer(data = dat_composition %>% filter(dat_subset=="rf"),
+                         formula = bcdist ~ scale(area) + scale(dPC1) + scale(dPC2) + scale(dPC3) + scale(timediff) + (1|Fragment))
+md3.composition.rr <-  lmerTest::lmer(data = dat_composition %>% filter(dat_subset=="rr"),
+                         formula = bcdist ~ scale(area) + scale(dPC1) + scale(dPC2) + scale(dPC3) + scale(timediff) + (1|Fragment))
+md3.composition.oc <-  lmerTest::lmer(data = dat_composition %>% filter(dat_subset=="oc"),
+                         formula = bcdist ~ scale(area) + scale(dPC1) + scale(dPC2) + scale(dPC3) + scale(timediff) + (1|Fragment))
+
+dat_richness <- dat_richness %>% mutate(area = log10(area_ha))
+md3.Jackrichness.all <- lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="all"),
+                         formula = jack1 ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + (1|Fragment))
+md3.Jackrichness.rf <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="rf"),
+                         formula = jack1 ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + (1|Fragment))
+md3.Jackrichness.rr <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="rr"),
+                         formula = jack1 ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + (1|Fragment))
+md3.Jackrichness.oc <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="oc"),
+                         formula = jack1 ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + (1|Fragment))
+```
+
+### Figure 2: Effect plots 
+
+```{r fig-2}
+
+dat.eff <- 
+  bind_rows(
+  ggpredict(model = md3.richness.rf,terms = "area",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",  rsp = "richRare",pred = "area"),
+  ggpredict(model = md3.richness.oc,terms = "area",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",  rsp = "richRare",pred = "area"),
+  ggpredict(model = md3.richness.rf,terms = "Season",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",rsp = "richRare",pred = "time"),
+  ggpredict(model = md3.richness.oc,terms = "Season",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",rsp = "richRare",pred = "time"),
+  ggpredict(model = md3.richness.rf,terms = "PC1",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",   rsp = "richRare",pred = "PC1"),
+  ggpredict(model = md3.richness.oc,terms = "PC1",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",   rsp = "richRare",pred = "PC1"),
+
+  ggpredict(model = md3.density.rf,terms = "area",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",  rsp = "density",pred = "area"),
+  ggpredict(model = md3.density.oc,terms = "area",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",  rsp = "density",pred = "area"),
+  ggpredict(model = md3.density.rf,terms = "Season",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",rsp = "density",pred = "time"),
+  ggpredict(model = md3.density.oc,terms = "Season",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",rsp = "density",pred = "time"),
+  ggpredict(model = md3.density.rf,terms = "PC1",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",   rsp = "density",pred = "PC1"),
+  ggpredict(model = md3.density.oc,terms = "PC1",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",   rsp = "density",pred = "PC1"),
+  
+  ggpredict(model = md3.composition.rf,terms = "area",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",    rsp = "composition",pred = "area"),
+  ggpredict(model = md3.composition.oc,terms = "area",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",    rsp = "composition",pred = "area"),
+  ggpredict(model = md3.composition.rf,terms = "timediff",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",rsp = "composition",pred = "time"),
+  ggpredict(model = md3.composition.oc,terms = "timediff",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",rsp = "composition",pred = "time"),
+  ggpredict(model = md3.composition.rf,terms = "dPC1",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",    rsp = "composition",pred = "PC1"),
+  ggpredict(model = md3.composition.oc,terms = "dPC1",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",    rsp = "composition",pred = "PC1"),
+
+  ggpredict(model = md3.Jackrichness.rf,terms = "area",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",  rsp = "richJack",pred = "area"),
+  ggpredict(model = md3.Jackrichness.oc,terms = "area",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",  rsp = "richJack",pred = "area"),
+  ggpredict(model = md3.Jackrichness.rf,terms = "Season",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",rsp = "richJack",pred = "time"),
+  ggpredict(model = md3.Jackrichness.oc,terms = "Season",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",rsp = "richJack",pred = "time"),
+  ggpredict(model = md3.Jackrichness.rf,terms = "PC1",type = "fixed") %>% as_tibble() %>% mutate(cat = "RF",   rsp = "richJack",pred = "PC1"),
+  ggpredict(model = md3.Jackrichness.oc,terms = "PC1",type = "fixed") %>% as_tibble() %>% mutate(cat = "OC",   rsp = "richJack",pred = "PC1")) %>% 
+  mutate(rsp = factor(rsp,levels = c("richRare","richJack","density","composition"))) %>% 
+  mutate(rsp = case_when(
+    rsp == "composition" ~ "4composition",
+    rsp == "richJack" ~ "2richJack",
+    rsp == "richRare" ~ "1richRare",
+    rsp == "density" ~ "3density"))
+  
+common.area <- list(geom_line(aes(colour = cat),size=1),
+                    geom_ribbon(alpha = 0.3, fill = "gray60"),ylab(""),xlab(" \n "),
+                    scale_colour_manual(name="",values = colslabel[c(1,3)]),
+                    scale_x_continuous(breaks = c(0,1,2,3,3.69897), labels = c(1,10,100,1000,5000)),
+                    theme_bw(),theme(legend.position = "top"),guides(colour=F))
+
+common.timePC1 <- list(geom_line(aes(colour = cat),size=1),
+                       geom_ribbon(alpha = 0.3, fill = "gray60"),
+                       ylab(""),xlab(" \n "),
+                       scale_colour_manual(name="",values = colslabel[c(1,3)]),
+                       theme_bw(),theme(legend.position = "top"),guides(colour=F))
+
+    #### ------------ rarefied (richness) -----------------------------------####  
+tmp <- 
+    list(
+    ggplot(data = dat.eff %>% filter(pred=="time",rsp=="1richRare"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.timePC1 + scale_y_break(c(3,12.5)) + xlab("Season (year)") + ylab("Richness (Rarefied)"),
+    ggplot(data = dat.eff %>% filter(pred=="area",rsp=="1richRare"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.area + scale_y_break(c(3,12.5)) + theme(axis.text.x.top = element_blank(),axis.ticks.x.top = element_blank()) + xlab("Area (ha)"),
+    ggplot(data = dat.eff %>% filter(pred=="PC1",rsp=="1richRare"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.timePC1 + scale_y_break(c(3,12.5)) + xlab("PC1 score"),
+    
+  #### ------------ rarefied (Jackknife) -----------------------------------#### 
+    ggplot(data = dat.eff %>% filter(pred=="time",rsp=="2richJack"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.timePC1 + xlab("Season (year)") + ylab("Richness (Jackknife)"),
+  ggplot(data = dat.eff %>% filter(pred=="area",rsp=="2richJack"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.area + xlab("Area (ha)"),
+    ggplot(data = dat.eff %>% filter(pred=="PC1",rsp=="2richJack"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.timePC1 + xlab("PC1 score"),
+  
+  #### ------------ Density -----------------------------------#### 
+    ggplot(data = dat.eff %>% filter(pred=="time",rsp=="3density"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.timePC1 + xlab("Season (year)") + ylab("Density (birds / ha)"),
+  ggplot(data = dat.eff %>% filter(pred=="area",rsp=="3density"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.area + xlab("Area (ha)"),
+    ggplot(data = dat.eff %>% filter(pred=="PC1",rsp=="3density"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.timePC1 + xlab("PC1 score"),
+
+  #### ------------ Compositional Dissimilarity -----------------------------------####  
+  ggplot(data = dat.eff %>% filter(pred=="time",rsp=="4composition"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.timePC1 + xlab("Time difference (years)") + ylab("Bray-Curtis Dissimilarity"),
+  ggplot(data = dat.eff %>% filter(pred=="area",rsp=="4composition"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.area + xlab("Area (ha) "),
+  ggplot(data = dat.eff %>% filter(pred=="PC1",rsp=="4composition"),
+       aes(x = x, y = predicted,ymin = conf.low, ymax = conf.high,group=cat)) + common.timePC1 + xlab("change in PC1 scores"))
+    
+fig2 <- aplot::plot_list(gglist = tmp,ncol = 3)
+
+ggsave(filename = "results/figures/Figure2_effectplotsRFOC.png",
+       plot = fig2,device = "tiff",dpi = 300,
+       width = 7.5,height = 8,units = "in")
+
+```
+
+### Table 1: model output
+
+```{r table-1}
+
+sjPlot::tab_model(
+    md3.richness.all,md3.richness.rf,md3.richness.oc,md3.richness.rr,
+    md3.Jackrichness.all,md3.Jackrichness.rf,md3.Jackrichness.oc,md3.Jackrichness.rr,
+    md3.density.all,md3.density.rf,md3.density.oc,md3.density.rr,
+    md3.composition.all,md3.composition.rf,md3.composition.oc,md3.composition.rr,
+    show.se = F,emph.p = T,linebreak = T,file = "results/tables/Table1_ModelOutputs.html")
+
+# Nakagawa R2 for each of the models
+
+performance::r2_nakagawa(md3.richness.all)
+performance::r2_nakagawa(md3.richness.rf)
+performance::r2_nakagawa(md3.richness.rr)
+performance::r2_nakagawa(md3.richness.oc)
+performance::r2_nakagawa(md3.Jackrichness.all)
+performance::r2_nakagawa(md3.Jackrichness.rf)
+performance::r2_nakagawa(md3.Jackrichness.rr)
+performance::r2_nakagawa(md3.Jackrichness.oc)
+performance::r2_nakagawa(md3.density.all)
+performance::r2_nakagawa(md3.density.rf)
+performance::r2_nakagawa(md3.density.rr)
+performance::r2_nakagawa(md3.density.oc)
+performance::r2_nakagawa(md3.composition.all)
+performance::r2_nakagawa(md3.composition.rf)
+performance::r2_nakagawa(md3.composition.rr)
+performance::r2_nakagawa(md3.composition.oc)
+
+md3.r2 <- c(197,165,207,467,158,253,110,433,427,306,436,291)/10
+
+```
+
+### Figure 3: Thresholds and indicator species
+
+```{r}
+
+fragmentchar0 <- 
+  pred %>% 
+  mutate(area = Area_m2/10000) %>% 
+  dplyr::select(Fragment, area) %>% distinct()
+
+smalltruefrag <- fragmentchar0 %>% filter(area < 300) %>% pull(Fragment)
+fragmentchar <- fragmentchar0 %>% filter(Fragment %in% smalltruefrag)
+
+titan_dat0 <- 
+  bf %>% filter(Fragment %in% smalltruefrag) %>% 
+  group_by(Fragment,Season,BirdID) %>% summarise(ndets = n()) %>% 
+  # detections per point count
+  ungroup() %>% 
+  pivot_wider(names_from = BirdID, values_from = ndets, values_fill = list(ndets = 0)) %>%
+  mutate(YearSite = paste(Season, Fragment, sep = "_")) %>%
+  column_to_rownames("YearSite") #123 species
+  
+occfilter_all <- 
+  data.frame(count = titan_dat0 %>% select(-Fragment,-Season) %>% 
+               vegan::decostand(x = .,method = "pa") %>% colSums()) %>% 
+  rownames_to_column("BirdID") %>% filter(count >=3) %>% pull(BirdID)
+
+titan_dat <-  titan_dat0 %>% select(Fragment,Season,occfilter_all) #97 species
+
+areaenv <- 
+  left_join(x = 
+              titan_dat %>% rownames_to_column("YearSite") %>% 
+              select(YearSite,Fragment,Season) %>% distinct(),
+            y = fragmentchar, by = "Fragment") %>% 
+  select(-Fragment,-Season) %>% column_to_rownames("YearSite") %>% as.data.frame()
+
+# AREA as environmental gradient
+
+# ---------------takes ~ hours to run / load files instead -------------------
+# areatitan.all <- titan(env = areaenv, txa = titan_dat %>% select(-Fragment,-Season) %>% as.data.frame(),
+#                      boot = T, memory = TRUE,nBoot = 999,ncpus = 7, imax = "IndVal")
+#  
+# save(areatitan.all,file = "results/intermediate_objects/TITAN_area.RData")
+ 
+load(file = "results/intermediate_objects/TITAN_area.RData")
+
+fin_areatitan <- 
+  areatitan.all$sppmax %>% as.data.frame() %>% rownames_to_column("birdID") %>%
+  filter(purity>=0.9,reliability>=0.9) %>%
+  mutate(Season = NA_integer_) %>%
+  select(birdID,,Season,freq,ienv.cp,maxgrp,`5%`,`10%`,`90%`,`95%`,IndVal,purity,reliability) %>%
+  `names<-`(c("birdID","Season","frequency","CP","direction","qCP_5","qCP_10","qCP_90","qCP_95","indval","purity","reliability"))
+
+fin_areatitan.dec0 <- fin_areatitan %>% filter(direction == 1,is.na(Season))
+fin_areatitan.dec <- fin_areatitan.dec0 %>% 
+  mutate(birdID = factor(birdID,
+                         levels = fin_areatitan.dec0 %>% arrange(-CP) %>% .[,"birdID"] ))
+
+fin_areatitan.inc0 <- fin_areatitan %>% filter(direction == 2,is.na(Season))
+fin_areatitan.inc <- fin_areatitan.inc0 %>%
+  mutate(birdID = factor(birdID,
+                         levels = fin_areatitan.inc0 %>% arrange(-CP) %>% .[,"birdID"] ))
+
+fig3 <- 
+   cowplot::plot_grid(
+       ggplot(data = fin_areatitan.dec, aes(x=CP, y = birdID)) + geom_point(size = 3,colour = "firebrick") +
+         geom_linerange(aes(xmin=qCP_5, xmax = qCP_95),
+                        linetype = 2,colour = "firebrick") + xlab("") + theme_bw() + ylab("") + theme(text=element_text(size=12)),
+       ggplot(data = fin_areatitan.inc, aes(x=CP, y = birdID)) + geom_point(size = 3,colour = "forestgreen") +
+         geom_linerange(aes(xmin=qCP_5, xmax = qCP_95),
+                        linetype = 2,colour = "forestgreen") + xlab("change point \n(in ha)") + theme_bw() + ylab("") + theme(text=element_text(size=12)),
+       nrow = 2, rel_heights = c(1.2,6))
+
+ggsave(filename = "results/figures/Figure3_TITAN-area.tif",plot = fig3,
+       device = "tiff",width = 7.5,height = 8,units = "in",dpi = 300)
+
+```
+
+
+# .
+
+# SUPPLEMENTARY INFORMATION
+
+# .
+
+## Tables
+
+## .
+
+### Table S2: Bird-traits and more
+
+```{r tableS1-birdtraits}
+
+tableS1 <-
+  read_csv("inputfiles_SI/LoudnessSightability_scored.csv") %>%
+  mutate(SpeciesID = tolower(SpeciesID),
+         Loudness_levels = case_when(Loudness_levels == "[1,1.43]" ~ "loud",
+                                     Loudness_levels == "(1.43,2.33]" ~ "moderate",
+                                     Loudness_levels == "(2.33,4]" ~ "soft"),
+         Sightability_levels = case_when(Sightability_levels == "[1,1.5]" ~ "easy",
+                                         Sightability_levels == "(1.5,2.14]" ~ "moderate",
+                                         Sightability_levels == "(2.14,3]" ~ "difficult")) %>%
+  dplyr::select(-L,-S) %>%
+  left_join(x = bd %>% mutate(BirdID = tolower(BirdID)) %>%
+  mutate(BirdID = ifelse(BirdID %in% c("Green Warbler","Greenish Warbler"),"Green/Greenish Warbler",BirdID)),
+             y = .,
+             by = c("BirdID"="SpeciesID")) %>% 
+  group_by(BirdID,IDlevel,Habit,Range,Loudness_levels,Sightability_levels) %>% summarize(ndetections = n()) %>% 
+  left_join(x = .,
+            y = readxl::read_xlsx(path = "inputfiles_prep/eBird India List - withslashesandspuhs 2018.xlsx",sheet = 1) %>% 
+              mutate(BirdID = tolower(`eBird India name`),
+                     ScientificName = `eBird Scientific name`) %>% dplyr::select(BirdID,ScientificName))
+
+write_csv(x = tableS1, file = "results/Supplementary/TableS2_Bird-Guild-Sight-Loudness-Score-Ndetections.csv")
+
+```
+
+### Table S3: PCA table
+
+```{r}
+
+load(file = "results/intermediate_objects/PCAobj.Rdata")
+
+tableS2 <- 
+  bind_cols(
+  get_eigenvalue(pca) %>% as_tibble(rownames = "PC.axes"),
+  pca$rotation %>% t() %>% as_tibble(rownames = "Dimensions")) %>% 
+  mutate(PC.axes = Dimensions) %>% 
+  dplyr::select(-Dimensions)
+
+names(tableS2)[5:11] <- c("tree density (/ha)",
+                         "tree basal area (m2/ha)",
+                         "tree species richness (rarefied, nmin=29)",
+                         "leaf-litter depth (cm)", "canopy cover (%)","vertical stratification (scored, 0-8)",
+                         "shrub density (/m2)")
+tableS2[,c(-1)] <- round(tableS2[,c(-1)],3)
+
+write_csv(x = tableS2,file = "results/Supplementary/TableS3_PCAdetails.csv")
+
+```
+
+
+### Table S4: Density tables
+
+```{r}
+
+write_csv(x = dat_density %>% 
+            select(-resp,-Area_m2,-Perimeter_m,-Shape_fractalD,
+                   -PC1,-PC2,-PC3,-PC4),
+          file = "results/Supplementary/TableS4_density-tables.csv")
+
+```
+
+
+### Table S5: Area in TITAN \$spp tables
+
+```{r}
+
+load(file = "results/intermediate_objects/TITAN_area.RData")
+
+fin_areatitan <- 
+  areatitan.all$sppmax %>% as.data.frame() %>% rownames_to_column("birdID") %>%
+  filter(purity>=0.9,reliability>=0.9) %>%
+  mutate(Season = NA_integer_) %>%
+  select(birdID,,Season,freq,ienv.cp,maxgrp,`5%`,`10%`,`90%`,`95%`,IndVal,purity,reliability) %>%
+  `names<-`(c("birdID","Season","frequency","CP","direction","qCP_5","qCP_10","qCP_90","qCP_95","indval","purity","reliability"))
+
+write_csv(x = fin_areatitan %>% select(-Season),
+          file = "results/Supplementary/TableS5_TITAN-area-sppmaxTable.csv")
+
+```
+
+### Table S6: interaction models (area:season-time)
+
+```{r}
+
+
+md3.richness.all_int <- lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="all"),
+                         formula = rareInd ~ scale(area) + scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + scale(area):scale(Season) + (1|Fragment))
+md3.richness.rf_int <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="rf"),
+                         formula = rareInd ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + scale(area):scale(Season) + (1|Fragment))
+md3.richness.rr_int <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="rr"),
+                         formula = rareInd ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + scale(area):scale(Season) + (1|Fragment))
+md3.richness.oc_int <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="oc"),
+                         formula = rareInd ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + scale(area):scale(Season) + (1|Fragment))
+
+md3.density.all_int <- lmerTest::lmer(data = dat_density %>% filter(dat_subset=="all"),
+                         formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season) + scale(area):scale(Season) + (1|Fragment))
+md3.density.rf_int <-  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="rf"),
+                         formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season) + scale(area):scale(Season) + (1|Fragment))
+md3.density.rr_int <-  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="rr"),
+                         formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season) + scale(area):scale(Season) + (1|Fragment))
+md3.density.oc_int <-  lm(data = dat_density %>% filter(dat_subset=="oc"),
+                         formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season) + scale(area):scale(Season))
+
+md3.composition.all_int <- lmerTest::lmer(data = dat_composition %>% filter(dat_subset=="all"),
+                         formula = bcdist ~ scale(area) + scale(dPC1) + scale(dPC2) + scale(dPC3) + scale(timediff) + scale(area):scale(timediff) + (1|Fragment))
+md3.composition.rf_int <-  lmerTest::lmer(data = dat_composition %>% filter(dat_subset=="rf"),
+                         formula = bcdist ~ scale(area) + scale(dPC1) + scale(dPC2) + scale(dPC3) + scale(timediff) + scale(area):scale(timediff) + (1|Fragment))
+md3.composition.rr_int <-  lmerTest::lmer(data = dat_composition %>% filter(dat_subset=="rr"),
+                         formula = bcdist ~ scale(area) + scale(dPC1) + scale(dPC2) + scale(dPC3) + scale(timediff) + scale(area):scale(timediff) + (1|Fragment))
+md3.composition.oc_int <-  lmerTest::lmer(data = dat_composition %>% filter(dat_subset=="oc"),
+                         formula = bcdist ~ scale(area) + scale(dPC1) + scale(dPC2) + scale(dPC3) + scale(timediff) + scale(area):scale(timediff) + (1|Fragment))
+
+md3.Jackrichness.all_int <- lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="all"),
+                         formula = jack1 ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + scale(area):scale(Season) + (1|Fragment))
+md3.Jackrichness.rf_int <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="rf"),
+                         formula = jack1 ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + scale(area):scale(Season) + (1|Fragment))
+md3.Jackrichness.rr_int <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="rr"),
+                         formula = jack1 ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + scale(area):scale(Season) + (1|Fragment))
+md3.Jackrichness.oc_int <-  lmerTest::lmer(data = dat_richness %>% filter(dat_subset=="oc"),
+                         formula = jack1 ~ scale(area)  +scale(PC1) +scale(PC2) +scale(PC3) +scale(Season) + scale(area):scale(Season) + (1|Fragment))
+
+
+sjPlot::tab_model(
+  md3.richness.all_int,    md3.richness.rf_int,    md3.richness.rr_int,    md3.richness.oc_int,
+  md3.Jackrichness.all_int,    md3.Jackrichness.rf_int,    md3.Jackrichness.rr_int,    md3.Jackrichness.oc_int,
+  md3.density.all_int,     md3.density.rf_int,     md3.density.rr_int,     md3.density.oc_int,
+  md3.composition.all_int, md3.composition.rf_int, md3.composition.rr_int, md3.composition.oc_int,
+  dv.labels = c("Richness\n(all)","\n(rf)","\n(rr)","\n(oc)",
+                "Jack-richness\n(all)","\n(rf)","\n(rr)","\n(oc)",
+                "Density\n(all)","\n(rf)","\n(rr)","\n(oc)",
+                "Composition\n(all)","\n(rf)","\n(rr)","\n(oc)"),
+  show.obs = T,digits = 2,show.aic = T,
+  digits.p = 3,show.p = T,show.r2 = TRUE,collapse.ci = TRUE,
+  file = "results/Supplementary/TableS6_ModelOutput_area-interaction-time-models.html")
+
+# Nakagawa R2 for each of the models
+
+modelR2_area.time <-
+  rbind(
+        performance::r2_nakagawa(md3.richness.all_int),
+        performance::r2_nakagawa(md3.richness.rf_int),
+        performance::r2_nakagawa(md3.richness.rr_int),
+        performance::r2_nakagawa(md3.richness.oc_int),
+        performance::r2_nakagawa(md3.density.all_int),
+        performance::r2_nakagawa(md3.density.rf_int),
+        performance::r2_nakagawa(md3.density.rr_int),
+        performance::r2_nakagawa(md3.density.oc_int),
+        performance::r2_nakagawa(md3.composition.all_int),
+        performance::r2_nakagawa(md3.composition.rf_int),
+        performance::r2_nakagawa(md3.composition.rr_int),
+        performance::r2_nakagawa(md3.composition.oc_int))
+
+```
+
+
+# .
+# Extra: Effect sizes as a table (for inline text) /see intermediate objects
+
+```{r}
+
+marginalmeaneffectsize_time <-# 1st sub-heading of results
+  bind_rows(
+    md3.richness.all %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "rarefied_richness",subset = "all") %>% as.data.frame(), 
+     md3.richness.rf %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "rarefied_richness",subset = "rf") %>% as.data.frame(),
+     md3.richness.oc %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "rarefied_richness",subset = "oc") %>% as.data.frame(),
+     md3.richness.rr %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "rarefied_richness",subset = "rr") %>% as.data.frame(),
+    md3.Jackrichness.all %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "Jackknife_richness",subset = "all") %>% as.data.frame(),
+     md3.Jackrichness.rf %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "Jackknife_richness",subset = "rf") %>% as.data.frame(),
+     md3.Jackrichness.oc %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "Jackknife_richness",subset = "oc") %>% as.data.frame(),
+     md3.Jackrichness.rr %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "Jackknife_richness",subset = "rr") %>% as.data.frame(),
+    md3.density.all %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "density",subset = "all") %>% as.data.frame(),
+     md3.density.rf %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "density",subset = "rf") %>% as.data.frame(),
+     md3.density.oc %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "density",subset = "oc") %>% as.data.frame(),
+     md3.density.rr %>% ggeffect(model =., terms = "Season") %>% mutate(resp = "density",subset = "rr") %>% as.data.frame(),
+    md3.composition.all %>% ggeffect(model =., terms = "timediff") %>% mutate(resp = "composition_bcdist",subset = "all") %>% as.data.frame(),
+     md3.composition.rf %>% ggeffect(model =., terms = "timediff") %>% mutate(resp = "composition_bcdist",subset = "rf") %>% as.data.frame(),
+     md3.composition.oc %>% ggeffect(model =., terms = "timediff") %>% mutate(resp = "composition_bcdist",subset = "oc") %>% as.data.frame(),
+     md3.composition.rr %>% ggeffect(model =., terms = "timediff") %>% mutate(resp = "composition_bcdist",subset = "rr") %>% as.data.frame()) %>% 
+  mutate(predictor = "season-or-time")
+
+marginalmeaneffectsize_area <-  # 2nd sub-heading of results
+  bind_rows(
+    md3.richness.all %>% ggeffect(model =., terms = "area") %>% mutate(resp = "rarefied_richness",subset = "all") %>% as.data.frame(), 
+     md3.richness.rf %>% ggeffect(model =., terms = "area") %>% mutate(resp = "rarefied_richness",subset = "rf") %>% as.data.frame(),
+     md3.richness.oc %>% ggeffect(model =., terms = "area") %>% mutate(resp = "rarefied_richness",subset = "oc") %>% as.data.frame(),
+     md3.richness.rr %>% ggeffect(model =., terms = "area") %>% mutate(resp = "rarefied_richness",subset = "rr") %>% as.data.frame(),
+    md3.Jackrichness.all %>% ggeffect(model =., terms = "area") %>% mutate(resp = "Jackknife_richness",subset = "all") %>% as.data.frame(),
+     md3.Jackrichness.rf %>% ggeffect(model =., terms = "area") %>% mutate(resp = "Jackknife_richness",subset = "rf") %>% as.data.frame(),
+     md3.Jackrichness.oc %>% ggeffect(model =., terms = "area") %>% mutate(resp = "Jackknife_richness",subset = "oc") %>% as.data.frame(),
+     md3.Jackrichness.rr %>% ggeffect(model =., terms = "area") %>% mutate(resp = "Jackknife_richness",subset = "rr") %>% as.data.frame(),
+    md3.density.all %>% ggeffect(model =., terms = "area") %>% mutate(resp = "density",subset = "all") %>% as.data.frame(),
+     md3.density.rf %>% ggeffect(model =., terms = "area") %>% mutate(resp = "density",subset = "rf") %>% as.data.frame(),
+     md3.density.oc %>% ggeffect(model =., terms = "area") %>% mutate(resp = "density",subset = "oc") %>% as.data.frame(),
+     md3.density.rr %>% ggeffect(model =., terms = "area") %>% mutate(resp = "density",subset = "rr") %>% as.data.frame(),
+    md3.composition.all %>% ggeffect(model =., terms = "area") %>% mutate(resp = "composition_bcdist",subset = "all") %>% as.data.frame(),
+     md3.composition.rf %>% ggeffect(model =., terms = "area") %>% mutate(resp = "composition_bcdist",subset = "rf") %>% as.data.frame(),
+     md3.composition.oc %>% ggeffect(model =., terms = "area") %>% mutate(resp = "composition_bcdist",subset = "oc") %>% as.data.frame(),
+     md3.composition.rr %>% ggeffect(model =., terms = "area") %>% mutate(resp = "composition_bcdist",subset = "rr") %>% as.data.frame()) %>% 
+   mutate(predictor = "area")
+
+marginalmeaneffectsize_habitat <-  # 3rd sub-heading of results
+  bind_rows(
+  
+  bind_rows(
+    md3.richness.all %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "rarefied_richness",subset = "all") %>% as.data.frame(), 
+     md3.richness.rf %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "rarefied_richness",subset = "rf") %>% as.data.frame(),
+     md3.richness.oc %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "rarefied_richness",subset = "oc") %>% as.data.frame(),
+     md3.richness.rr %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "rarefied_richness",subset = "rr") %>% as.data.frame(),
+    md3.Jackrichness.all %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "Jackknife_richness",subset = "all") %>% as.data.frame(),
+     md3.Jackrichness.rf %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "Jackknife_richness",subset = "rf") %>% as.data.frame(),
+     md3.Jackrichness.oc %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "Jackknife_richness",subset = "oc") %>% as.data.frame(),
+     md3.Jackrichness.rr %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "Jackknife_richness",subset = "rr") %>% as.data.frame(),
+    md3.density.all %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "density",subset = "all") %>% as.data.frame(),
+     md3.density.rf %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "density",subset = "rf") %>% as.data.frame(),
+     md3.density.oc %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "density",subset = "oc") %>% as.data.frame(),
+     md3.density.rr %>% ggeffect(model =., terms = "PC1") %>% mutate(resp = "density",subset = "rr") %>% as.data.frame(),
+    md3.composition.all %>% ggeffect(model =., terms = "dPC1") %>% mutate(resp = "composition_bcdist",subset = "all") %>% as.data.frame(),
+     md3.composition.rf %>% ggeffect(model =., terms = "dPC1") %>% mutate(resp = "composition_bcdist",subset = "rf") %>% as.data.frame(),
+     md3.composition.oc %>% ggeffect(model =., terms = "dPC1") %>% mutate(resp = "composition_bcdist",subset = "oc") %>% as.data.frame(),
+     md3.composition.rr %>% ggeffect(model =., terms = "dPC1") %>% mutate(resp = "composition_bcdist",subset = "rr") %>% as.data.frame()) %>% 
+   mutate(predictor = "PC1"),
+  
+  bind_rows(
+    md3.richness.all %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "rarefied_richness",subset = "all") %>% as.data.frame(), 
+     md3.richness.rf %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "rarefied_richness",subset = "rf") %>% as.data.frame(),
+     md3.richness.oc %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "rarefied_richness",subset = "oc") %>% as.data.frame(),
+     md3.richness.rr %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "rarefied_richness",subset = "rr") %>% as.data.frame(),
+    md3.Jackrichness.all %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "Jackknife_richness",subset = "all") %>% as.data.frame(),
+     md3.Jackrichness.rf %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "Jackknife_richness",subset = "rf") %>% as.data.frame(),
+     md3.Jackrichness.oc %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "Jackknife_richness",subset = "oc") %>% as.data.frame(),
+     md3.Jackrichness.rr %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "Jackknife_richness",subset = "rr") %>% as.data.frame(),
+    md3.density.all %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "density",subset = "all") %>% as.data.frame(),
+     md3.density.rf %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "density",subset = "rf") %>% as.data.frame(),
+     md3.density.oc %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "density",subset = "oc") %>% as.data.frame(),
+     md3.density.rr %>% ggeffect(model =., terms = "PC2") %>% mutate(resp = "density",subset = "rr") %>% as.data.frame(),
+    md3.composition.all %>% ggeffect(model =., terms = "dPC2") %>% mutate(resp = "composition_bcdist",subset = "all") %>% as.data.frame(),
+     md3.composition.rf %>% ggeffect(model =., terms = "dPC2") %>% mutate(resp = "composition_bcdist",subset = "rf") %>% as.data.frame(),
+     md3.composition.oc %>% ggeffect(model =., terms = "dPC2") %>% mutate(resp = "composition_bcdist",subset = "oc") %>% as.data.frame(),
+     md3.composition.rr %>% ggeffect(model =., terms = "dPC2") %>% mutate(resp = "composition_bcdist",subset = "rr") %>% as.data.frame()) %>% 
+   mutate(predictor = "PC2"),
+  
+  bind_rows(
+    md3.richness.all %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "rarefied_richness",subset = "all") %>% as.data.frame(), 
+     md3.richness.rf %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "rarefied_richness",subset = "rf") %>% as.data.frame(),
+     md3.richness.oc %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "rarefied_richness",subset = "oc") %>% as.data.frame(),
+     md3.richness.rr %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "rarefied_richness",subset = "rr") %>% as.data.frame(),
+    md3.Jackrichness.all %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "Jackknife_richness",subset = "all") %>% as.data.frame(),
+     md3.Jackrichness.rf %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "Jackknife_richness",subset = "rf") %>% as.data.frame(),
+     md3.Jackrichness.oc %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "Jackknife_richness",subset = "oc") %>% as.data.frame(),
+     md3.Jackrichness.rr %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "Jackknife_richness",subset = "rr") %>% as.data.frame(),
+    md3.density.all %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "density",subset = "all") %>% as.data.frame(),
+     md3.density.rf %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "density",subset = "rf") %>% as.data.frame(),
+     md3.density.oc %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "density",subset = "oc") %>% as.data.frame(),
+     md3.density.rr %>% ggeffect(model =., terms = "PC3") %>% mutate(resp = "density",subset = "rr") %>% as.data.frame(),
+    md3.composition.all %>% ggeffect(model =., terms = "dPC3") %>% mutate(resp = "composition_bcdist",subset = "all") %>% as.data.frame(),
+     md3.composition.rf %>% ggeffect(model =., terms = "dPC3") %>% mutate(resp = "composition_bcdist",subset = "rf") %>% as.data.frame(),
+     md3.composition.oc %>% ggeffect(model =., terms = "dPC3") %>% mutate(resp = "composition_bcdist",subset = "oc") %>% as.data.frame(),
+     md3.composition.rr %>% ggeffect(model =., terms = "dPC3") %>% mutate(resp = "composition_bcdist",subset = "rr") %>% as.data.frame()) %>% 
+   mutate(predictor = "PC3")
+  )
+
+write_csv(x = marginalmeaneffectsize_time,file = "results/intermediate_objects/table2_MarginalEffectSizeForInlineText_time.csv")
+write_csv(x = marginalmeaneffectsize_area,file = "results/intermediate_objects/table2_MarginalEffectSizeForInlineText_area.csv")
+write_csv(x = marginalmeaneffectsize_habitat,file = "results/intermediate_objects/table2_MarginalEffectSizeForInlineText_habitat.csv")
+
+# A final column of % change in response from lowest (2000, selaliparai1, lowest PC score) to highest (2019, akkamalai, highest PC score)  predictor has been added manually
+
+```
+
+# Extra: Mixed-model for OC-density did not converge / used simple linear instead
+
+```{r}
+
+modlist <- vector("list",8)
+names(modlist) <- c("area-only","habitat-only","time-only",
+                    "area-habitat","habitat-time","time-area",
+                    "area-habitat-time","area-habitat-time_lm")
+
+modlist$`area-only` <- 
+  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="oc"),
+                 formula = Estimate ~ scale(area) + (1|Fragment),REML = T)
+modlist$`habitat-only` <- 
+  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="oc"),
+                 formula = Estimate ~ scale(PC1) + scale(PC2) + scale(PC3) + (1|Fragment),REML = T)
+modlist$`time-only` <- 
+  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="oc"),
+                 formula = Estimate ~ scale(Season) + (1|Fragment),REML = T)
+modlist$`area-habitat` <-  #singular-fit
+  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="oc"),
+                 formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + (1|Fragment),REML = T)
+modlist$`habitat-time` <- 
+  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="oc"),
+                 formula = Estimate ~ scale(Season) + scale(PC1) + scale(PC2) + scale(PC3) + (1|Fragment),REML = T)
+modlist$`time-area` <- 
+  lmerTest::lmer(data = dat_density %>% filter(dat_subset=="oc"),
+                 formula = Estimate ~ scale(area) + scale(Season) + (1|Fragment),REML = T)
+library(lmerTest)
+modlist$`area-habitat-time` <- #singular fit
+  lmer(data = dat_density %>% filter(dat_subset=="oc"),
+       formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season) + (1|Fragment),REML = T)
+modlist$`area-habitat-time_lm` <- 
+  lm(data =dat_density %>% filter(dat_subset=="oc"),
+     formula = Estimate ~ scale(area) + scale(PC1) + scale(PC2) + scale(PC3) + scale(Season))
+
+sjPlot::tab_model(modlist, show.se = F, emph.p = T, linebreak = T,
+                  file = "results/intermediate_objects/Extra_allOC-densitymodels.html")
+
+
+```
+

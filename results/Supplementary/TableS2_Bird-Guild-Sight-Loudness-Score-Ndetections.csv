@@ -1,0 +1,133 @@
+BirdID,IDlevel,Habit,Range,Loudness_levels,Sightability_levels,ndetections,ScientificName
+ashy drongo,S,RF,NA,loud,easy,131,Dicrurus leucophaeus
+ashy prinia,S,OC,NA,moderate,moderate,10,Prinia socialis
+ashy woodswallow,S,OC,NA,soft,easy,2,Artamus fuscus
+ashy/brown-rumped minivet,S,RF,NA,soft,difficult,1,Pericrocotus divaricatus/cantonensis
+asian brown flycatcher,S,OC,NA,soft,difficult,30,Muscicapa dauurica
+asian emerald dove,S,RF,NA,moderate,moderate,100,Chalcophaps indica
+asian fairy-bluebird,S,RF,NA,loud,easy,364,Irena puella
+asian koel,S,OC,NA,loud,easy,5,Eudynamys scolopaceus
+bar-winged flycatcher-shrike,S,RF,NA,soft,moderate,152,Hemipus picatus
+besra,S,RF,NA,moderate,difficult,39,Accipiter virgatus
+black-and-orange flycatcher,S,RF,Y,soft,moderate,123,Ficedula nigrorufa
+black-headed cuckooshrike,S,OC,NA,soft,moderate,3,Lalage melanoptera
+black-naped monarch,S,RF,NA,loud,moderate,342,Hypothymis azurea
+black-rumped flameback (lesser goldenbacked woodpecker),S,OC,NA,loud,easy,26,Dinopium benghalense
+black-throated munia,S,RF,Y,soft,moderate,6,Lonchura kelaarti
+black-winged kite (black-shouldered kite),S,OC,NA,soft,easy,2,Elanus caeruleus
+black eagle,S,RF,NA,soft,easy,3,Ictinaetus malaiensis
+blue-bearded bee-eater,S,RF,NA,moderate,moderate,1,Nyctyornis athertoni
+blue-capped rock-thrush,S,RF,NA,soft,difficult,3,Monticola cinclorhyncha
+blue-throated flycatcher,S,RF,NA,soft,difficult,1,Cyornis rubeculoides
+blyth's reed warbler,S,OC,NA,moderate,difficult,1139,Acrocephalus dumetorum
+booted warbler,S,OC,NA,soft,difficult,3,Iduna caligata
+bronzed drongo,S,RF,NA,loud,easy,240,Dicrurus aeneus
+brown-breasted flycatcher,S,RF,NA,soft,difficult,24,Muscicapa muttui
+brown-capped pygmy woodpecker (indian pygmy woodpecker),S,RF,NA,moderate,moderate,24,Yungipicus nanus
+brown-cheeked fulvetta,S,RF,NA,loud,difficult,623,Alcippe poioicephala
+brown fish-owl,S,RF,NA,soft,moderate,5,Ketupa zeylonensis
+brown shrike,S,OC,NA,moderate,easy,34,Lanius cristatus
+chestnut-headed bee-eater,S,RF,NA,loud,easy,70,Merops leschenaulti
+chestnut-tailed/malabar starling,S,RF,Y,moderate,moderate,11,Sturnia malabarica/blythii
+chestnut-winged cuckoo,S,RF,NA,soft,difficult,1,Clamator coromandus
+cinereous tit (great tit),S,OC,NA,moderate,moderate,3,Parus cinereus
+common flameback (goldenbacked three-toed woodpecker),S,RF,NA,moderate,moderate,68,Dinopium javanense
+common hawk-cuckoo,S,OC,NA,loud,difficult,3,Hierococcyx varius
+common iora,S,OC,NA,moderate,difficult,83,Aegithina tiphia
+common rosefinch,S,OC,NA,soft,moderate,23,Carpodacus erythrinus
+common tailorbird,S,OC,NA,moderate,moderate,101,Orthotomus sutorius
+crested hawk-eagle,S,RF,NA,loud,easy,1,Nisaetus cirrhatus
+crested serpent-eagle,S,RF,NA,loud,easy,10,Spilornis cheela
+crimson-backed sunbird (small sunbird),S,RF,Y,moderate,moderate,1712,Leptocoma minima
+dark-fronted babbler,S,RF,NA,soft,difficult,136,Rhopocichla atriceps
+eurasian hoopoe,S,OC,NA,moderate,moderate,10,Upupa epops
+flame-throated bulbul (ruby-throated bulbul),S,RF,Y,moderate,moderate,149,Rubigula gularis
+forest wagtail,S,RF,NA,soft,difficult,33,Dendronanthus indicus
+fork-tailed drongo-cuckoo,NA,RF,NA,NA,NA,2,Surniculus dicruroides
+golden-fronted leafbird (golden-fronted chloropsis),S,RF,NA,moderate,difficult,47,Chloropsis aurifrons
+great hornbill (great pied hornbill),S,RF,NA,loud,easy,28,Buceros bicornis
+greater coucal,S,OC,NA,loud,easy,36,Centropus sinensis
+greater flameback,S,RF,NA,loud,moderate,161,Chrysocolaptes guttacristatus
+greater racket-tailed drongo,S,RF,NA,loud,easy,435,Dicrurus paradiseus
+green/greenish warbler,S,RF,NA,moderate,difficult,1383,Phylloscopus nitidus/trochiloides
+green/greenish warbler,S,NA,NA,moderate,difficult,749,Phylloscopus nitidus/trochiloides
+grey-bellied cuckoo,S,OC,NA,moderate,difficult,2,Cacomantis passerinus
+grey-breasted prinia,S,OC,NA,moderate,moderate,29,Prinia hodgsonii
+grey-fronted green-pigeon (pompadour green-pigeon),S,RF,Y,moderate,difficult,67,Treron affinis
+grey-headed bulbul,S,RF,Y,moderate,moderate,21,Brachypodius priocephalus
+grey-headed canary-flycatcher,S,RF,NA,moderate,easy,431,Culicicapa ceylonensis
+grey junglefowl,S,RF,NA,loud,moderate,106,Gallus sonneratii
+grey wagtail,S,RF,NA,moderate,easy,16,Motacilla cinerea
+heart-spotted woodpecker,S,RF,NA,moderate,moderate,23,Hemicircus canente
+house crow,S,OC,NA,loud,easy,4,Corvus splendens
+indian blackbird,S,RF,NA,moderate,difficult,78,Turdus simillimus
+indian blue robin,S,RF,NA,moderate,difficult,246,Larvivora brunnea
+indian golden oriole,S,OC,NA,moderate,easy,39,Oriolus kundoo
+indian paradise-flycatcher,S,RF,NA,moderate,easy,120,Terpsiphone paradisi
+indian peafowl,S,OC,NA,loud,easy,3,Pavo cristatus
+indian pitta,S,RF,NA,loud,difficult,1,Pitta brachyura
+indian pond-heron,S,OC,NA,soft,easy,4,Ardeola grayii
+indian scimitar-babbler,S,RF,NA,loud,moderate,341,Pomatorhinus horsfieldii
+indian yellow tit,S,RF,NA,moderate,moderate,176,Machlolophus aplonotus
+jungle babbler,S,OC,NA,loud,easy,6,Turdoides striata
+jungle myna,S,OC,NA,loud,easy,4,Acridotheres fuscus
+jungle owlet,S,RF,NA,loud,difficult,2,Glaucidium radiatum
+large-billed crow,S,OC,NA,loud,easy,323,Corvus macrorhynchos
+large-billed leaf warbler,S,RF,NA,loud,difficult,770,Phylloscopus magnirostris
+large hawk-cuckoo,S,RF,NA,soft,difficult,3,Hierococcyx sparverioides
+lesser yellownape,S,RF,NA,moderate,moderate,22,Picus chlorolophus
+little spiderhunter,S,RF,NA,moderate,moderate,373,Arachnothera longirostra
+malabar barbet (crimson-throated barbet),S,RF,Y,loud,moderate,123,Psilopogon malabaricus
+malabar grey hornbill,S,RF,Y,loud,easy,270,Ocyceros griseus
+malabar parakeet (blue-winged parakeet),S,RF,Y,loud,easy,185,Psittacula columboides
+malabar trogon,S,RF,NA,moderate,difficult,75,Harpactes fasciatus
+malabar whistling-thrush,S,RF,NA,loud,moderate,544,Myophonus horsfieldii
+malabar woodshrike,S,RF,Y,moderate,moderate,135,Tephrodornis sylvicola
+mountain imperial-pigeon,S,RF,NA,loud,moderate,243,Ducula badia
+nilgiri flowerpecker,S,RF,Y,moderate,moderate,1961,Dicaeum concolor
+nilgiri flycatcher,S,RF,Y,soft,difficult,296,Eumyias albicaudatus
+nilgiri thrush,S,RF,Y,soft,difficult,3,Zoothera neilgherriensis
+nilgiri wood-pigeon,S,RF,Y,soft,difficult,3,Columba elphinstonii
+orange-headed thrush,S,RF,NA,moderate,difficult,241,Geokichla citrina
+orange minivet,S,RF,NA,moderate,easy,494,Pericrocotus flammeus
+oriental dollarbird,S,RF,NA,moderate,easy,4,Eurystomus orientalis
+oriental honey-buzzard (crested honey buzzard),S,RF,NA,soft,easy,4,Pernis ptilorhynchus
+oriental magpie-robin,S,OC,NA,loud,easy,30,Copsychus saularis
+oriental scops-owl,S,RF,NA,moderate,difficult,1,Otus sunia
+oriental white-eye,S,RF,NA,soft,moderate,904,Zosterops palpebrosus
+palani laughingthrush (palani chilappan),S,RF,Y,moderate,moderate,24,Montecincla fairbanki
+pied bushchat,S,OC,NA,moderate,easy,1,Saxicola caprata
+pied thrush,S,RF,NA,soft,difficult,3,Geokichla wardii
+plum-headed parakeet,S,OC,NA,loud,easy,83,Psittacula cyanocephala
+puff-throated babbler,S,RF,NA,loud,difficult,297,Pellorneum ruficeps
+purple sunbird,S,OC,NA,moderate,moderate,74,Cinnyris asiaticus
+red-wattled lapwing,S,OC,NA,loud,easy,1,Vanellus indicus
+red-whiskered bulbul,S,OC,NA,loud,easy,418,Pycnonotus jocosus
+red spurfowl,S,RF,NA,loud,moderate,56,Galloperdix spadicea
+rufous babbler,S,RF,Y,loud,moderate,34,Turdoides subrufa
+rufous woodpecker,S,RF,NA,loud,moderate,13,Micropternus brachyurus
+rusty-tailed flycatcher,S,RF,NA,soft,difficult,225,Ficedula ruficauda
+shikra,S,OC,NA,moderate,moderate,6,Accipiter badius
+small minivet,S,OC,NA,moderate,moderate,42,Pericrocotus cinnamomeus
+southern hill myna,S,RF,NA,loud,easy,493,Gracula indica
+speckled piculet,S,RF,NA,soft,difficult,25,Picumnus innominatus
+spot-bellied eagle-owl,S,RF,NA,soft,difficult,1,Bubo nipalensis
+spotted dove,S,OC,NA,moderate,easy,24,Streptopelia chinensis
+square-tailed bulbul (black bulbul),S,RF,NA,loud,easy,514,Hypsipetes ganeesa
+sri lanka frogmouth,S,RF,NA,moderate,difficult,2,Batrachostomus moniliger
+streak-throated woodpecker,S,OC,NA,loud,moderate,9,Picus xanthopygaeus
+thick-billed warbler,S,OC,NA,moderate,difficult,2,Arundinax aedon
+tickell's leaf warbler,S,RF,NA,soft,difficult,4,Phylloscopus affinis
+velvet-fronted nuthatch,S,RF,NA,moderate,easy,529,Sitta frontalis
+verditer flycatcher,S,RF,NA,soft,moderate,7,Eumyias thalassinus
+vernal hanging-parrot (indian lorikeet),S,RF,NA,loud,moderate,355,Loriculus vernalis
+western crowned warbler,S,RF,NA,soft,difficult,97,Phylloscopus occipitalis
+white-bellied blue flycatcher,S,RF,Y,soft,difficult,196,Cyornis pallidipes
+white-bellied sholakili,S,RF,Y,moderate,difficult,45,Sholicola albiventris
+white-bellied treepie,S,RF,Y,loud,easy,69,Dendrocitta leucogastra
+white-bellied woodpecker (great black woodpecker),S,RF,NA,loud,moderate,16,Dryocopus javensis
+white-breasted waterhen,S,OC,NA,loud,easy,3,Amaurornis phoenicurus
+white-cheeked barbet (small green barbet),S,RF,Y,loud,moderate,652,Psilopogon viridis
+white-throated kingfisher,S,OC,NA,loud,easy,9,Halcyon smyrnensis
+wynaad laughingthrush,S,RF,Y,moderate,difficult,13,Ianthocincla delesserti
+yellow-browed bulbul,S,RF,NA,loud,easy,1221,Iole indica
